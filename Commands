@@ -1,0 +1,431 @@
+
+
+
+InstallProject(){
+    clear;
+    echo -e '\n'
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║               PROYECTO SISTEMAS OPERATIVOS II               ║'
+    echo -e '║                                                             ║'
+    echo -e '║                         INTEGRANTES                         ║'
+    echo -e '║                     KEVIN OLEAGA GARCIA                     ║'
+    echo -e '║                   RICARDO BRENES CALDERÓN                   ║'
+    echo -e '║                     EDDY RETANA VINDAS                      ║'
+    echo -e '║                          IC / 2018                          ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║               INSTALACIÓN DE AWS COMMAND LINE               ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+ 
+    echo -e 'Actualizando la lista de paquetes.......................... 33%'
+    apt-get update > /dev/null
+    echo -e 'Instalando python-pip...................................... 66%'
+    apt-get install -y python-pip > /dev/null
+    echo -e 'Instalando AWS Command Line................................ 99%'
+    pip install awscli > /dev/null
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                      INSTALACIÓN DE JQ                      ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Instalando jq.............................................. 50%'
+    apt-get install -y jq > /dev/null
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                      INSTALACIÓN DE GIT                     ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Instalando GIT............................................. 50%'
+    apt-get install -y git > /dev/null
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                   INSTALACIÓN DE DOCKER CE                  ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Actualizando la lista de paquetes.......................... 14%'
+    apt-get update > /dev/null
+    echo -e 'Instalando paquetes........................................ 28%'
+    apt-get install -y apt-transport-https ca-certificates curl software-properties-common > /dev/null	
+    echo -e 'Agregando clave GPG oficial de docker...................... 42%'
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -  > /dev/null
+    echo -e 'Verificando huella digital................................. 56%'
+    apt-key fingerprint 0EBFCD88 > /dev/null
+    echo -e 'Configurando repositorio estable........................... 70%'
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    echo -e 'Actualizando la lista de paquetes.......................... 84%'
+    apt-get update > /dev/null
+    echo -e 'Instalando Docker CE....................................... 98%'
+    apt-get install -y docker-ce > /dev/null
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║              CONFIGURACIÓN DE AWS COMMAND LINE              ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Introduzca los datos solicitados.'
+    aws configure;	
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║            CREACIÓN DEL PAR DE CLAVES(KEY PAIRS)            ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Digite el nombre que desea asignarle:'
+    read KeyName;
+    cd /;
+    echo -e '\nCreando directorio......................................... 33%'
+    mkdir KeyPairs > /dev/null;
+    echo -e 'Creando llave.............................................. 66%'
+    aws ec2 create-key-pair --key-name $KeyName --query 'KeyMaterial' --output text > KeyPairs/$KeyName.pem;
+    echo -e 'Configurando permisos...................................... 99%'
+    chmod 400 KeyPairs/$KeyName.pem;
+    echo -e '\nEl archivo ha sido guardado en: KeyPairs/'$KeyName'.pem'
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║      OBTENCIÓN DE REPOSITORIO GITHUB CON PLANTILLAS DE      ║'
+    echo -e '║                       AWS CLOUD FORMATION                   ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Obteniendo archivos del repositorio........................ 50%';
+    cd /;
+    git clone https://github.com/jicowan/hello-world.git > /dev/null;
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                     CREACIÓN DE CLUSTER                     ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    cd hello-world
+    echo -e 'Creando cluster............................................ 50%';	
+    aws cloudformation create-stack --template-body file://ecs-cluster.template --stack-name EcsClusterStack --capabilities CAPABILITY_IAM --tags Key=Name,Value=ECS --region us-west-2 --parameters ParameterKey=KeyName,ParameterValue=$KeyName ParameterKey=EcsCluster,ParameterValue=getting-started ParameterKey=AsgMaxSize,ParameterValue=2 > /dev/null;
+
+    var=$(aws cloudformation describe-stacks --stack-name EcsClusterStack --query 'Stacks[*].[ StackStatus]');
+    var=$(echo $var | cut -c6-20);
+
+    echo -e '\n  **** Por favor espere mientras el cluster es creado ******  \n';
+        
+    while [ "$var" != "CREATE_COMPLETE" ]; do
+        var=$(aws cloudformation describe-stacks --stack-name EcsClusterStack --query 'Stacks[*].[ StackStatus]' 2>&1);
+        var=$(echo $var | cut -c6-20);
+    done;
+
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                 CREACIÓN DE SERVIDOR JENKINS                ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Creando servidor........................................... 50%';
+    cd /;
+    cd hello-world;
+    aws cloudformation create-stack --template-body file://ecs-jenkins-demo.template --stack-name JenkinsStack --capabilities CAPABILITY_IAM --tags Key=Name,Value=Jenkins --region us-west-2 --parameters ParameterKey=EcsStackName,ParameterValue=EcsClusterStack  > /dev/null
+
+    var=$(aws cloudformation describe-stacks --stack-name JenkinsStack --query 'Stacks[*].[ StackStatus]');
+    var=$(echo $var | cut -c6-20);
+
+    echo -e '\n  **** Por favor espere mientras el servidor es creado ******  \n';
+        
+    while [ "$var" != "CREATE_COMPLETE" ]; do
+        var=$(aws cloudformation describe-stacks --stack-name JenkinsStack --query 'Stacks[*].[ StackStatus]');
+	var=$(echo $var | cut -c6-20);
+    done;
+
+    Host=$(aws ec2 describe-instances --filters "Name=tag-value","Values=JenkinsStack" --region us-west-2 | jq .Reservations[].Instances[].PublicDnsName | sed s/\"//g);
+
+    JenkinsPassword=$(ssh -i /KeyPairs/$KeyName.pem ec2-user@$Host sudo cat /var/lib/jenkins/secrets/initialAdminPassword);   
+
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║   CREACIÓN DE REGISTRO PRIVADO DE CONTENEDORES AMAZON ECR   ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Creando repositorio........................................ 50%';
+    aws ecr create-repository --repository-name hello-world --region us-west-2  > /dev/null;
+
+    echo -e 'Generando token de autorización............................ 98%';
+    aws ecr get-login --no-include-email > /dev/null;
+
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║               CONFIGURACIÓN JENKINS FIRST RUN               ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║ - Pasos:                                                    ║'
+    echo -e '║    a. Ingrese al servidor Jenkins.                          ║'
+    echo -e '║    b. Elija Instalar complementos sugeridos.                ║'
+    echo -e '║    c. Crea tu primer usuario administrador.                 ║'
+    echo -e '║    d. Elige Guardar y terminar.                             ║'
+    echo -e '║    e. Elija Comenzar a usar Jenkins.                        ║'
+    echo -e '║    f. Instala los complementos de Jenkins.                  ║'
+    echo -e '║        - Inicie sesión en Jenkins con su nombre de          ║'
+    echo -e '║          usuario y contraseña.                              ║'
+    echo -e '║        - En el Dashboard, elija Administrar Jenkins.        ║'
+    echo -e '║        - Elija la pestaña Administrar Plugins.              ║'
+    echo -e '║        - Elija la pestaña Disponible.                       ║'
+    echo -e '║        - Seleccione el plugin Cloudbees Docker build y      ║'
+    echo -e '║          publish y el plugin Amazon ECR.                    ║' 
+    echo -e '║        - Elija Descargar ahora e instalar después de        ║'
+    echo -e '║          reiniciar.                                         ║'
+    echo -e '║        - Elija Reiniciar Jenkins cuando la instalación      ║'
+    echo -e '║          esté completa y no se estén ejecutando trabajos.   ║'
+    echo -e '║                                                             ║'
+    echo -e '║                         ADVERTENCIA.                        ║'
+    echo -e '║        NO CONTINUAR SIN HABER COMPLETADO ESTA SECCIÓN.      ║'
+    echo -e '║                                                             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e ' Ingreso a sevidor Jenkins:'
+    echo -e "   URL: $Host"
+    echo -e "   PASSWORD: $JenkinsPassword"
+    echo -e '\n'
+
+    cont="no"
+    while [ "$cont" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res;    
+        cont=$res;
+    done;
+
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║       CREACIÓN E IMPORTACION DE CLAVES SSH PARA GITHUB      ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Digite su correo electronico vinculado con GitHub:';
+    read Email
+    echo -e 'Creando clave SSH.......................................... 25%';
+    ssh-keygen -t rsa -b 4096 -C $Email
+    echo -e 'Verificando que ssh-agent se encuentre habilitado.......... 50%';    
+    eval "$(ssh-agent -s)"
+    echo -e 'Agregando clave SHH al agente.............................. 75%';    
+    ssh-add ~/.ssh/id_rsa
+    echo -e 'Obteniendo clave SHH para GitHub........................... 98%';    
+    SSH_GIT_PASS=$(cat < ~/.ssh/id_rsa.pub);
+
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                CREACIÓN DE REPOSITORIO GITHUB               ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                                                             ║'
+    echo -e '║    - Pasos: Colocación llave SSH.                           ║'
+    echo -e '║          a. Inicie sesión en GitHub (Desde navegador).      ║'
+    echo -e '║          b. Ingrese a Configuraciones.                      ║'
+    echo -e '║          c. Ingrese a SSH y GPG Keys.                       ║'
+    echo -e '║          d. Ingrese a Configuraciones.                      ║'
+    echo -e '║          e. Seleccione Nueva llave SSH.                     ║'
+    echo -e '║          f. Coloque la siguiente configuración.             ║'
+    echo -e '║          g. Seleccione agregar llave SSH.                   ║'
+    echo -e '║                                                             ║'
+    echo -e '║                         ADVERTENCIA.                        ║'
+    echo -e '║        NO CONTINUAR SIN HABER COMPLETADO ESTA SECCIÓN.      ║'
+    echo -e '║                                                             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e 'Title: Key'
+    echo -e "Key: $SSH_GIT_PASS \n"
+
+    continue="no"
+    while [ "$continue" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res    
+	continue=$res;
+    done;
+
+    echo -e '\n╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║    - Pasos: Crea un repositorio.                            ║'
+    echo -e '║          a. Inicie sesión en GitHub (Desde navegador).      ║'
+    echo -e '║          b. Elija Iniciar un proyecto o Nuevo repositorio.  ║'
+    echo -e '║          c. Escriba un nombre para el repositorio.          ║'
+    echo -e '║          d. Elija Crear repositorio.                        ║'
+    echo -e '║          e. Seleccione la opción SSH y copie el origen      ║'
+    echo -e '║             remoto (ej. git@github.com:username/some.git)   ║'
+    echo -e '║                                                             ║'
+    echo -e '║                         ADVERTENCIA.                        ║'
+    echo -e '║        NO CONTINUAR SIN HABER COMPLETADO ESTA SECCIÓN.      ║'
+    echo -e '║                                                             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    continue="no"
+    while [ "$continue" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res    
+	continue=$res;
+    done;
+
+    echo -e 'Introduzca el origen remoto del repositorio GitHub';
+    read remote    
+
+    cd /;
+    cd hello-world;
+    echo -e 'Eliminando directorio oculto .git.......................... 20%';    
+    rm -fR .git;
+    echo -e 'Reiniciando repositorio.................................... 40%';    
+    git init > /dev/null;
+    echo -e 'Empacando archivos......................................... 60%';    
+    git add .
+    git commit -m "First commit"
+    echo -e 'Estableciendo origen remoto................................ 80%';    
+    git remote add origin $remote;
+    echo -e 'Insertando archivos en el repositorio ..................... 98%';    
+    git push -u origin master;
+
+    echo -e '\n╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                   HABILITACIÓN DE WEBHOOKS                  ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║ - Pasos:                                                    ║'
+    echo -e '║    a. Navegue a su repositorio de GitHub.                   ║'
+    echo -e '║    b. Elija Ajustes.                                        ║'
+    echo -e '║    c. Elija Webhooks.                                       ║'
+    echo -e '║    d. Elija Agregar servicio.                               ║'
+    echo -e '║    e. Elija Agregar Webhook.                                ║'
+    echo -e '║    f. Coloque la siguiente configuración                    ║'
+    echo -e '║                                                             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e " Payload URL: http://$Host/github-webhook/"
+    echo -e " Content type: application/json"
+    echo -e " Secret: "
+    echo -e " Which events would you like to trigger this webhook: Just the push event."
+    echo -e " Check: Active\n"
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║                                                             ║'
+    echo -e '║                         ADVERTENCIA.                        ║'
+    echo -e '║        NO CONTINUAR SIN HABER COMPLETADO ESTA SECCIÓN.      ║'
+    echo -e '║                                                             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝'
+
+    continue="no"
+    while [ "$continue" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res    
+	continue=$res;
+    done;
+ 
+    echo -e '\n                    ***** COMPLETADO ******                  \n'
+
+    RepoUri=$(aws ecr describe-repositories | jq '.repositories[].repositoryUri' | sed s/\"//g)
+    RepoName=$(aws ecr describe-repositories | jq '.repositories[].repositoryName' | sed s/\"//g)
+
+    echo -e '╔═════════════════════════════════════════════════════════════╗'
+    echo -e '║              CONFIGURACIÓN DEL SERVIDOR JENKINS             ║'
+    echo -e '╚═════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '╔════════════════════════════════════════════════════════════════╗'
+    echo -e '║ - Paso 1:                                                      ║'
+    echo -e '║    a. Inicie sesión en Jenkins.                                ║'
+    echo -e '║    b. Elija Nueva tarea y luego otorguele un nombre.           ║'
+    echo -e '║    c. Seleccione "Crear proyecto de estilo libre".             ║'
+    echo -e '║    d. Presione OK.                                             ║'
+    echo -e '║                                                                ║'
+    echo -e '║ - Paso 2 (Pestaña General):                                    ║'
+    echo -e '║    a. Seleccione GitHub project y coloque el URL del proyecto. ║'
+    echo -e '║                                                                ║'
+    echo -e '║ - Paso 3 (Configurar el origen del código fuente):             ║'
+    echo -e '║    a. Seleccione la opción Git.                                ║'
+    echo -e '║    b. Coloque el URL del repositorio.                          ║'
+    echo -e '║                                                                ║'
+    echo -e '║ - Paso 4 (Disparadores de ejecuciones):                        ║'
+    echo -e '║    a. Seleccione GitHub hook trigger for GITScm polling.       ║'
+    echo -e '║                                                                ║'
+    echo -e '║ - Paso 5 (Entorno de ejecución):                               ║'
+    echo -e '║    a. No seleccionar ninguno.                                  ║'
+    echo -e '║                                                                ║'
+    echo -e '║ - Paso 6 (Ejecutar):                                           ║'
+    echo -e '║    a. Seleccione Añadir un nuevo paso.                         ║'
+    echo -e '║         - Seleccione linea de comandos (Shell).                ║'
+    echo -e '║         - Coloque el siguiente Script                          ║'
+    echo -e '║                                                                ║'
+    echo -e '╚════════════════════════════════════════════════════════════════╝\n'
+    
+    echo -e '    #!/bin/bash'                  
+    echo -e '    DOCKER_LOGIN=`aws ecr get-login --region us-west-2`'
+    echo -e '    ${DOCKER_LOGIN} \n'
+
+    continue="no"
+    while [ "$continue" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res    
+	continue=$res;
+    done;
+
+    echo -e '\n╔════════════════════════════════════════════════════════════════╗'
+    echo -e '║                                                                ║'
+    echo -e '║    b. Seleccione Añadir un nuevo paso.                         ║'
+    echo -e '║         - Seleccione Docker Build and Publish.                 ║'
+    echo -e '║         - Coloque la siguiente configuración.                  ║'
+    echo -e '║                                                                ║'
+    echo -e '╚════════════════════════════════════════════════════════════════╝\n'
+
+    echo -e "    Repository Name: $RepoName"                                                                
+    echo -e '    Tag: v_$BUILD_NUMBER'
+    echo -e '    Docker Host URI:'           
+    echo -e '    Server credentials:'           
+    echo -e "    Docker registry URL: https://$RepoUri"           
+    echo -e '    Registry credentials: \n'           
+
+    continue="no"
+    while [ "$continue" != "yes" ]; do
+        echo -e '¿Desea continuar? yes/no';
+        read res    
+	continue=$res;
+    done;
+
+    echo -e '\n╔════════════════════════════════════════════════════════════════╗'
+    echo -e '║                                                                ║'
+    echo -e '║    c. Seleccione Añadir un nuevo paso.                         ║'
+    echo -e '║         - Seleccione linea de comandos (Shell).                ║'
+    echo -e '║         - Coloque el siguiente Script                          ║'
+    echo -e '║                                                                ║'
+    echo -e '╚════════════════════════════════════════════════════════════════╝\n'
+
+    echo -e '    #!/bin/bash'                                                                
+    echo -e '    #Constants \n'
+
+    echo -e '    REGION=us-west-2'           
+    echo -e '    REPOSITORY_NAME=hello-world'           
+    echo -e '    CLUSTER=getting-started'           
+    echo -e '    FAMILY=`sed -n 's/.*"family": "\(.*\)",/\1/p' taskdef.json'           
+    echo -e '    NAME=`sed -n 's/.*"name": "\(.*\)",/\1/p' taskdef.json`'
+    echo -e '    SERVICE_NAME=${NAME}-service\n'
+
+    echo -e '    #Store the repositoryUri as a variable'
+    echo -e '    REPOSITORY_URI=`aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --region ${REGION} | jq .repositories[].repositoryUri | tr -d '"'`\n'
+
+    echo -e '    #Replace the build number and respository URI placeholders with the constants above'
+    echo -e '    sed -e "s;%BUILD_NUMBER%;${BUILD_NUMBER};g" -e "s;%REPOSITORY_URI%;${REPOSITORY_URI};g" taskdef.json > ${NAME}-v_${BUILD_NUMBER}.json\n'
+
+    echo -e '    #Register the task definition in the repository'
+    echo -e '    aws ecs register-task-definition --family ${FAMILY} --cli-input-json file://${WORKSPACE}/${NAME}-v_${BUILD_NUMBER}.json --region ${REGION}'
+    echo -e '    SERVICES=`aws ecs describe-services --services ${SERVICE_NAME} --cluster ${CLUSTER} --region ${REGION} | jq .failures[]`'
+
+    echo -e '    #Get latest revision'
+    echo -e '    REVISION=`aws ecs describe-task-definition --task-definition ${NAME} --region ${REGION} | jq .taskDefinition.revision`'
+    echo -e '    \n'
+    echo -e '    #Create or update service'
+    echo -e '    if [ "$SERVICES" == "" ]; then'
+    echo -e '      echo "entered existing service"'
+    echo -e '      DESIRED_COUNT=`aws ecs describe-services --services ${SERVICE_NAME} --cluster ${CLUSTER} --region ${REGION} | jq .services[].desiredCount`'
+    echo -e '      if [ ${DESIRED_COUNT} = "0" ]; then'
+    echo -e '        DESIRED_COUNT="1"'
+    echo -e '      fi'
+    echo -e '      aws ecs update-service --cluster ${CLUSTER} --region ${REGION} --service ${SERVICE_NAME} --task-definition ${FAMILY}:${REVISION} --desired-count ${DESIRED_COUNT}'
+    echo -e '    else'
+    echo -e '      echo "entered new service"'
+    echo -e '      aws ecs create-service --service-name ${SERVICE_NAME} --desired-count 1 --task-definition ${FAMILY} --cluster ${CLUSTER} --region ${REGION}'
+    echo -e '    fi'
+}
